@@ -7,6 +7,21 @@ import ErrorMessage from '../errorMessage/ErrorMessage';
 import useMarvelService from '../../services/MarvelService';
 import './charList.scss';
 
+const setContent = (process, Component, newItemsLoading) => {
+    switch(process){
+        case 'waiting':
+            return <Spinner/>
+        case 'loading':
+            return newItemsLoading ? <Component/> : <Spinner/>
+        case 'confirmed':
+            return <Component/>
+        case 'error':
+            return <ErrorMessage/>
+        default:
+            return new Error('unexpected process state')
+    }
+}  
+
 const CharList = (props) => {
 
     const [charList, setCharList] = useState([])
@@ -15,7 +30,7 @@ const CharList = (props) => {
     const [charEnded, setCharEnded] = useState(false)
 
 
-    const {loading, error, getAllCharacters} = useMarvelService()
+    const {process, setProcess, getAllCharacters} = useMarvelService()
 
     useEffect(()=>{
         onRequest(offset, true)
@@ -26,6 +41,8 @@ const CharList = (props) => {
 
         getAllCharacters(offset)
             .then(onCharsListLoaded)
+            .then(()=> setProcess('confirmed'))
+            
     }
 
     const onCharsListLoaded = (newCharsList) => {
@@ -44,13 +61,6 @@ const CharList = (props) => {
     const itemRefs = useRef([]);
 
     const focusOnItem = (id) => {
-        // Я реализовал вариант чуть сложнее, и с классом и с фокусом
-        // Но в теории можно оставить только фокус, и его в стилях использовать вместо класса
-        // На самом деле, решение с css-классом можно сделать, вынеся персонажа
-        // в отдельный компонент. Но кода будет больше, появится новое состояние
-        // и не факт, что мы выиграем по оптимизации за счет бОльшего кол-ва элементов
-
-        // По возможности, не злоупотребляйте рефами, только в крайних случаях
         itemRefs.current.forEach(item => item.classList.remove('char__item_selected'));
         itemRefs.current[id].classList.add('char__item_selected');
         itemRefs.current[id].focus();
@@ -85,17 +95,9 @@ const CharList = (props) => {
         )
     }
     
-    
-    const items = renderItem(charList)
-    const errorMessage = error ? <ErrorMessage/> : null
-    const spinner = loading && !newItemsLoading ? <Spinner/> : null
-
-
     return (
         <div className="char__list">
-            {errorMessage}
-            {spinner}
-            {items}
+            {setContent(process, () => renderItem(charList), newItemsLoading)}
             <button 
             className="button button__main button__long"
             disabled={newItemsLoading}
